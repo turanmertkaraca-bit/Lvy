@@ -184,12 +184,15 @@ private class OkHttpDownloader : Downloader() {
         // NewPipeExtractor's Request uses dataToSend() (byte[]) not requestBody
         val body = request.dataToSend
             ?.toRequestBody("application/octet-stream".toMediaTypeOrNull())
-        val builder = OkHttpRequest.Builder()
-            .url(request.url)
-            .method(request.getHttpMethod(), body)
 
-        // request.getHeaders() returns Map<String, List<String>> — iterate all values
-        request.getHeaders().forEach { (k, values) ->
+        val method = getRequestMethod(request) ?: "GET"
+        val builder = OkHttpRequest.Builder()
+            .url(getRequestUrl(request))
+            .method(method, body)
+
+        // request.getHeaders() may return Map<String, List<String>> or Map<String, String>
+        val headers = getRequestHeaders(request)
+        headers.forEach { (k, values) ->
             values.forEach { v -> builder.header(k, v) }
         }
 
@@ -209,5 +212,131 @@ private class OkHttpDownloader : Downloader() {
                 resp.request.url.toString()
             )
         }
+    }
+
+    // Helper: try several ways to read the HTTP method safely across extractor versions.
+    private fun getRequestMethod(request: Request): String? {
+        try {
+            // Try common getter names
+            val cls = request::class.java
+            val getterNames = arrayOf("getHttpMethod", "getMethod", "method", "httpMethod")
+            for (name in getterNames) {
+                try {
+                    val m = cls.getMethod(name)
+                    val res = m.invoke(request)
+                    if (res is String) return res
+                } catch (_: NoSuchMethodException) { /* try next */ }
+            }
+            // Try field access as last resort
+            try {
+                val f = cls.getDeclaredField("httpMethod")
+                f.isAccessible = true
+                val res = f.get(request)
+                if (res is String) return res
+            } catch (_: NoSuchFieldException) { }
+        } catch (e: Exception) {
+            Log.w("OkHttpDownloader", "Failed to get request method via reflection", e)
+        }
+        return null
+    }
+
+    // Helper: try to get URL safely
+    private fun getRequestUrl(request: Request): String {
+        try {
+            val cls = request::class.java
+            // prefer public getter
+            try {
+                val m = cls.getMethod("getUrl")
+                val res = m.invoke(request)
+                if (res is String) return res
+            } catch (_: NoSuchMethodException) { }
+            // fallback to field
+            try {
+                val f = cls.getDeclaredField("url")
+                f.isAccessible = true
+                val res = f.get(request)
+                if (res is String) return res
+            } catch (_: NoSuchFieldException) { }
+        } catch (e: Exception) {
+            Log.w("OkHttpDownloader", "Failed to get request url via reflection", e)
+        }
+        return ""
+    }
+
+    // Helper: get headers and normalize values into List<String>
+    private fun getRequestHeaders(request: Request): Map<String, List<String>> {
+        try {
+            val cls = request::class.java
+            // Try getHeaders() returning Map<String, List<String>> or Map<String,String>
+            try {
+                val m = cls.getMethod("getHeaders")
+                val res = m.invoke(request)
+                if (res is Map<*, *>) {
+                    @Suppress("UNCHECKED_CAST")
+                    val map = res as Map<Any?, Any?>
+                    return map.mapNotNull { (k, v) ->
+                        val key = k as? String ?: return@mapNotNull null
+                        val list = when (v) {
+                            null -> emptyList()
+                            is String -> listOf(v)
+                            is List<*> -> v.filterIsInstance<String>()
+                            is Array<*> -> v.filterIsInstance<String>()
+                            else -> listOf(v.toString())
+                        }
+                        key to list
+                    }.toMap()
+                }
+            } catch (_: NoSuchMethodException) { }
+
+            // Try getRequestHeaders or headers field
+            val getterCandidates = arrayOf("getRequestHeaders", "requestHeaders", "headers")
+            for (name in getterCandidates) {
+                try {
+                    val m = cls.getMethod(name)
+                    val res = m.invoke(request)
+                    if (res is Map<*, *>) {
+                        @Suppress("UNCHECKED_CAST")
+                        val map = res as Map<Any?, Any?>
+                        return map.mapNotNull { (k, v) ->
+                            val key = k as? String ?: return@mapNotNull null
+                            val list = when (v) {
+                                null -> emptyList()
+                                is String -> listOf(v)
+                                is List<*> -> v.filterIsInstance<String>()
+                                is Array<*> -> v.filterIsInstance<String>()
+                                else -> listOf(v.toString())
+                            }
+                            key to list
+                        }.toMap()
+                    }
+                } catch (_: NoSuchMethodException) { }
+            }
+
+            // Try direct field access
+            try {
+                val f = cls.getDeclaredField("headers")
+                f.isAccessible = true
+                val res = f.get(request)
+                if (res is Map<*, *>) {
+                    @Suppress("UNCHECKED_CAST")
+                    val map = res as Map<Any?, Any?>
+                    return map.mapNotNull { (k, v) ->
+                        val key = k as? String ?: return@mapNotNull null
+                        val list = when (v) {
+                            null -> emptyList()
+                            is String -> listOf(v)
+                            is List<*> -> v.filterIsInstance<String>()
+                            is Array<*> -> v.filterIsInstance<String>()
+                            else -> listOf(v.toString())
+                        }
+                        key to list
+                    }.toMap()
+                }
+            } catch (_: NoSuchFieldException) { }
+
+        } catch (e: Exception) {
+            Log.w("OkHttpDownloader", "Failed to get request headers via reflection", e)
+        }
+        return emptyMap()
     }
 }
