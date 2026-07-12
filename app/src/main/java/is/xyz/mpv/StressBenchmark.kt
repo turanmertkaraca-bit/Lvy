@@ -73,7 +73,7 @@ object StressBenchmark {
         maxVoDelay = 0
         startFrameDrops = MPVLib.getPropertyInt("frame-drop-count") ?: 0
 
-        Log.i(TAG, "Starting benchmark (sampling every ${SAMPLE_INTERVAL_MS}ms for ~${MIN_SAMPLES} samples)")
+        Log.i(TAG, "Starting benchmark (sampling every " + SAMPLE_INTERVAL_MS + "ms for ~" + MIN_SAMPLES + " samples)")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         job = scope.launch {
             repeat(MIN_SAMPLES) {
@@ -120,39 +120,37 @@ object StressBenchmark {
         }
         val avgFps = fpsSamples.average()
         val displayFps = 60.0  // most phones including Reno 11F
-        val fpsRatio = avgFps / displayFps
 
         // Score: blend FPS achievement with frame-drop penalty
         val level = when {
-            fpsRatio >= 0.95 && maxFrameDrops <= 2 && maxVoDelay <= 1 -> StressLevel.GREEN
-            fpsRatio >= 0.85 && maxFrameDrops <= 15 && maxVoDelay <= 4 -> StressLevel.YELLOW
+            avgFps >= displayFps * 0.95 && maxFrameDrops <= 2 && maxVoDelay <= 1 -> StressLevel.GREEN
+            avgFps >= displayFps * 0.85 && maxFrameDrops <= 15 && maxVoDelay <= 4 -> StressLevel.YELLOW
             else -> StressLevel.RED
         }
 
         // Recommendation table — calibrated for Mali-G610 MC4 (Reno 11F).
-        // Greens keep current preset; Yellows step down one tier; Reds step down two tiers
-        // or fall back to RAVU/None.
-        val (preset, hwdec, summary) = when (level) {
-            StressLevel.GREEN -> Triple(
-                ShaderPresets.Preset.ANIME4K_A,
-                "mediacodec",
-                "Your device handles the current load comfortably. " +
-                "Anime4K Mode A and hardware decoding are safe to use. " +
-                "You could try Mode B for better quality on cleaner sources."
-            )
-            StressLevel.YELLOW -> Triple(
-                ShaderPresets.Preset.ANIME4K_A,
-                "mediacodec",
-                "Slight stress detected. Stick with Anime4K Mode A and hardware decoding. " +
-                "If issues persist, drop base resolution to 360p or switch to RAVU Lite."
-            )
-            StressLevel.RED -> Triple(
-                ShaderPresets.Preset.RAVU_LITE,
-                "mediacodec",
-                "Your device is overloaded. Switching to RAVU Lite (lighter than Anime4K) " +
-                "and keeping hardware decode. If still bad, set shader preset to None and " +
-                "lower the base resolution further."
-            )
+        val preset: ShaderPresets.Preset
+        val hwdec: String
+        val summary: String
+        when (level) {
+            StressLevel.GREEN -> {
+                preset = ShaderPresets.Preset.ANIME4K_A
+                hwdec = "mediacodec"
+                summary = "Your device handles the current load comfortably. " +
+                    "Anime4K Mode A and hardware decoding are safe to use."
+            }
+            StressLevel.YELLOW -> {
+                preset = ShaderPresets.Preset.ANIME4K_A
+                hwdec = "mediacodec"
+                summary = "Slight stress detected. Stick with Anime4K Mode A. " +
+                    "If issues persist, drop base resolution to 360p or switch to RAVU Lite."
+            }
+            StressLevel.RED -> {
+                preset = ShaderPresets.Preset.RAVU_LITE
+                hwdec = "mediacodec"
+                summary = "Your device is overloaded. Switching to RAVU Lite (lighter than Anime4K). " +
+                    "If still bad, set shader preset to None and lower the base resolution."
+            }
         }
 
         return Result(
