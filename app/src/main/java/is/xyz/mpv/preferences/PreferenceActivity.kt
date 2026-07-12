@@ -156,18 +156,18 @@ class PreferenceActivity : AppCompatActivity(),
             findPreference<androidx.preference.Preference>("run_stress_benchmark")
                 ?.setOnPreferenceClickListener {
                     val activity = requireActivity()
-                    if (!is.xyz.mpv.MPVLib.isCreated()) {
+                    if (!`is`.xyz.mpv.MPVLib.isCreated()) {
                         android.widget.Toast.makeText(
-                            activity, getString(is.xyz.mpv.R.string.benchmark_no_video),
+                            activity, getString(`is`.xyz.mpv.R.string.benchmark_no_video),
                             android.widget.Toast.LENGTH_LONG
                         ).show()
                         return@setOnPreferenceClickListener true
                     }
                     android.widget.Toast.makeText(
-                        activity, getString(is.xyz.mpv.R.string.benchmark_running),
+                        activity, getString(`is`.xyz.mpv.R.string.benchmark_running),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
-                    is.xyz.mpv.StressBenchmark.start(activity) { result ->
+                    `is`.xyz.mpv.StressBenchmark.start(activity) { result ->
                         activity.runOnUiThread {
                             showBenchmarkResult(activity, result)
                         }
@@ -178,12 +178,12 @@ class PreferenceActivity : AppCompatActivity(),
 
         private fun showBenchmarkResult(
             context: android.content.Context,
-            result: is.xyz.mpv.StressBenchmark.Result
+            result: `is`.xyz.mpv.StressBenchmark.Result
         ) {
             val colorHex = when (result.level) {
-                is.xyz.mpv.StressBenchmark.StressLevel.GREEN -> "#4CAF50"
-                is.xyz.mpv.StressBenchmark.StressLevel.YELLOW -> "#FFC107"
-                is.xyz.mpv.StressBenchmark.StressLevel.RED -> "#F44336"
+                `is`.xyz.mpv.StressBenchmark.StressLevel.GREEN -> "#4CAF50"
+                `is`.xyz.mpv.StressBenchmark.StressLevel.YELLOW -> "#FFC107"
+                `is`.xyz.mpv.StressBenchmark.StressLevel.RED -> "#F44336"
             }
             val msg = buildString {
                 append("Stress Level: ${result.level.label}\n\n")
@@ -195,16 +195,16 @@ class PreferenceActivity : AppCompatActivity(),
                 append(result.summary)
             }
             androidx.appcompat.app.AlertDialog.Builder(context)
-                .setTitle(is.xyz.mpv.R.string.benchmark_complete)
+                .setTitle(`is`.xyz.mpv.R.string.benchmark_complete)
                 .setMessage(msg)
-                .setPositiveButton(is.xyz.mpv.R.string.benchmark_apply_recommended) { _, _ ->
+                .setPositiveButton(`is`.xyz.mpv.R.string.benchmark_apply_recommended) { _, _ ->
                     val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
                     prefs.edit()
                         .putString("shader_preset", result.recommendedPreset.key)
                         .putBoolean("hardware_decoding", result.recommendedHwdec != "no")
                         .apply()
                     // Apply at runtime so user sees immediate effect
-                    is.xyz.mpv.ShaderPresets.applyRuntime(context, result.recommendedPreset)
+                    `is`.xyz.mpv.ShaderPresets.applyRuntime(context, result.recommendedPreset)
                     android.widget.Toast.makeText(
                         context, "Applied ${result.recommendedPreset.displayName}",
                         android.widget.Toast.LENGTH_SHORT
