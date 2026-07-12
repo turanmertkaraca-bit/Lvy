@@ -182,15 +182,16 @@ private class OkHttpDownloader : Downloader() {
         .build()
 
     override fun execute(request: Request): Response {
-        // NewPipeExtractor's Request uses dataToSend() (byte[]) not requestBody
-        val body = request.dataToSend
+        // NewPipeExtractor's Request uses getter methods (dataToSend(), url(), etc.)
+        // — direct field access fails because they're private.
+        val body = request.dataToSend()
             ?.toRequestBody("application/octet-stream".toMediaTypeOrNull())
         val builder = OkHttpRequest.Builder()
-            .url(request.url)
-            .method(request.httpMethod, body)
+            .url(request.url())
+            .method(request.httpMethod(), body)
 
         // request.headers() returns Map<String, List<String>> — iterate all values
-        request.headers.forEach { (k, values) ->
+        request.headers().forEach { (k, values) ->
             values.forEach { v -> builder.header(k, v) }
         }
 
