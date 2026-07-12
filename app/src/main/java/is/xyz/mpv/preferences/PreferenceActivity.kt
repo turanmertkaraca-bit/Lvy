@@ -180,38 +180,40 @@ class PreferenceActivity : AppCompatActivity(),
             context: android.content.Context,
             result: is.xyz.mpv.StressBenchmark.Result
         ) {
-            val colorHex = when (result.level) {
-                is.xyz.mpv.StressBenchmark.StressLevel.GREEN -> "#4CAF50"
-                is.xyz.mpv.StressBenchmark.StressLevel.YELLOW -> "#FFC107"
-                is.xyz.mpv.StressBenchmark.StressLevel.RED -> "#F44336"
-            }
             val msg = buildString {
-                append("Stress Level: \${result.level.label}\n\n")
+                append("Stress Level: ${result.level.label}\n\n")
                 append("Avg video filter FPS: %.1f\n".format(result.avgVfFps))
-                append("Frame drops during test: \${result.maxFrameDrops}\n")
-                append("Max VO delay: \${result.maxVoDelay}\n\n")
-                append("Recommended shader: \${result.recommendedPreset.displayName}\n")
-                append("Recommended decoder: \${result.recommendedHwdec}\n\n")
+                append("Frame drops during test: ${result.maxFrameDrops}\n")
+                append("Max VO delay: ${result.maxVoDelay}\n\n")
+                append("Recommended shader: ${result.recommendedPreset.displayName}\n")
+                append("Recommended decoder: ${result.recommendedHwdec}\n\n")
                 append(result.summary)
             }
-            androidx.appcompat.app.AlertDialog.Builder(context)
+            val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(is.xyz.mpv.R.string.benchmark_complete)
                 .setMessage(msg)
-                .setPositiveButton(is.xyz.mpv.R.string.benchmark_apply_recommended) { _, _ ->
-                    val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
-                    prefs.edit()
-                        .putString("shader_preset", result.recommendedPreset.key)
-                        .putBoolean("hardware_decoding", result.recommendedHwdec != "no")
-                        .apply()
-                    // Apply at runtime so user sees immediate effect
-                    is.xyz.mpv.ShaderPresets.applyRuntime(context, result.recommendedPreset)
-                    android.widget.Toast.makeText(
-                        context, "Applied \${result.recommendedPreset.displayName}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                }
-                .setNegativeButton(android.R.string.cancel) { _, _ -> }
-                .show()
+                .create()
+            dialog.setButton(
+                android.content.DialogInterface.BUTTON_POSITIVE,
+                context.getString(is.xyz.mpv.R.string.benchmark_apply_recommended)
+            ) { _, _ ->
+                val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
+                prefs.edit()
+                    .putString("shader_preset", result.recommendedPreset.key)
+                    .putBoolean("hardware_decoding", result.recommendedHwdec != "no")
+                    .apply()
+                // Apply at runtime so user sees immediate effect
+                is.xyz.mpv.ShaderPresets.applyRuntime(context, result.recommendedPreset)
+                android.widget.Toast.makeText(
+                    context, "Applied ${result.recommendedPreset.displayName}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+            dialog.setButton(
+                android.content.DialogInterface.BUTTON_NEGATIVE,
+                context.getString(android.R.string.cancel)
+            ) { _, _ -> dialog.dismiss() }
+            dialog.show()
         }
     }
 
