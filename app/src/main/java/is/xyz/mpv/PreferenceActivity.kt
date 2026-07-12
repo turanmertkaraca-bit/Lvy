@@ -1,4 +1,4 @@
-package `is`.xyz.mpv.preferences
+package `is`.xyz.mpv
 
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -15,7 +15,10 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import com.google.android.material.color.DynamicColors
-import `is`.xyz.mpv.R
+import R
+import `is`.xyz.mpv.MPVLib
+import `is`.xyz.mpv.StressBenchmark
+import `is`.xyz.mpv.ShaderPresets
 
 class PreferenceActivity : AppCompatActivity(),
     PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
@@ -156,13 +159,13 @@ class PreferenceActivity : AppCompatActivity(),
             findPreference<androidx.preference.Preference>("run_stress_benchmark")
                 ?.setOnPreferenceClickListener {
                     val activity = requireActivity()
-                    if (is.xyz.mpv.MPVLib.isCreated()) {
+                    if (MPVLib.isCreated()) {
                         android.widget.Toast.makeText(
                             activity,
-                            getString(is.xyz.mpv.R.string.benchmark_running),
+                            getString(R.string.benchmark_running),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
-                        is.xyz.mpv.StressBenchmark.start(activity) { result ->
+                        StressBenchmark.start(activity) { result ->
                             activity.runOnUiThread {
                                 showBenchmarkResult(activity, result)
                             }
@@ -170,7 +173,7 @@ class PreferenceActivity : AppCompatActivity(),
                     } else {
                         android.widget.Toast.makeText(
                             activity,
-                            getString(is.xyz.mpv.R.string.benchmark_no_video),
+                            getString(R.string.benchmark_no_video),
                             android.widget.Toast.LENGTH_LONG
                         ).show()
                     }
@@ -180,7 +183,7 @@ class PreferenceActivity : AppCompatActivity(),
 
         private fun showBenchmarkResult(
             context: android.content.Context,
-            result: is.xyz.mpv.StressBenchmark.Result
+            result: StressBenchmark.Result
         ) {
             val msg = "Stress Level: " + result.level.label + "\n\n" +
                 "Avg FPS: " + "%.1f".format(result.avgVfFps) + "\n" +
@@ -192,16 +195,16 @@ class PreferenceActivity : AppCompatActivity(),
             // Use the EXACT same AlertDialog pattern that MPVActivity.kt uses
             // (verified to compile in the original mpv-android codebase)
             with (androidx.appcompat.app.AlertDialog.Builder(context)) {
-                setTitle(is.xyz.mpv.R.string.benchmark_complete)
+                setTitle(R.string.benchmark_complete)
                 setMessage(msg)
-                setPositiveButton(is.xyz.mpv.R.string.benchmark_apply_recommended) { dialog, _ ->
+                setPositiveButton(R.string.benchmark_apply_recommended) { dialog, _ ->
                     dialog.dismiss()
                     val prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(context)
                     prefs.edit()
                         .putString("shader_preset", result.recommendedPreset.key)
                         .putBoolean("hardware_decoding", result.recommendedHwdec != "no")
                         .apply()
-                    is.xyz.mpv.ShaderPresets.applyRuntime(context, result.recommendedPreset)
+                    ShaderPresets.applyRuntime(context, result.recommendedPreset)
                     android.widget.Toast.makeText(
                         context,
                         "Applied " + result.recommendedPreset.displayName,
