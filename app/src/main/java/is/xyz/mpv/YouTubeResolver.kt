@@ -186,10 +186,10 @@ private class OkHttpDownloader : Downloader() {
             ?.toRequestBody("application/octet-stream".toMediaTypeOrNull())
         val builder = OkHttpRequest.Builder()
             .url(request.url)
-            .method(request.httpMethod, body)
+            .method(request.getHttpMethod(), body)
 
-        // request.headers() returns Map<String, List<String>> — iterate all values
-        request.headers.forEach { (k, values) ->
+        // request.getHeaders() returns Map<String, List<String>> — iterate all values
+        request.getHeaders().forEach { (k, values) ->
             values.forEach { v -> builder.header(k, v) }
         }
 
