@@ -1,0 +1,51 @@
+name: Unpack mpv-android.zip
+
+on:
+  push:
+    paths:
+      - 'mpv-android.zip'
+      - '.github/workflows/unpack-mpv-android.yml'
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Install unzip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
+      - name: Unzip mpv-android.zip
+        run: |
+          if [ ! -f mpv-android.zip ]; then
+            echo "mpv-android.zip not found in repository root; nothing to do"
+            exit 0
+          fi
+          # Unzip into temporary dir and copy contents to repo root
+          mkdir -p /tmp/mpv_unzip
+          unzip -o mpv-android.zip -d /tmp/mpv_unzip
+          # Copy all files (including dotfiles) from extracted tree into workspace
+          shopt -s dotglob || true
+          cp -a /tmp/mpv_unzip/* . || true
+          rm -rf /tmp/mpv_unzip
+
+      - name: Commit and push extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes detected after unzip; nothing to commit"
+            exit 0
+          fi
+          git commit -m "Unpack mpv-android.zip into repository [skip ci]"
+          git push origin HEAD:main
